@@ -13,7 +13,8 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 from stable_baselines3.common.utils import obs_as_tensor, safe_mean
 from stable_baselines3.common.vec_env import VecEnv
-
+import torch_geometric as thg
+import copy
 
 class OnPolicyAlgorithm(BaseAlgorithm):
     """
@@ -171,6 +172,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 # Convert to pytorch tensor or to TensorDict
                 if isinstance(self._last_obs[0], gym.spaces.GraphInstance):
                     obs_tensor = self.policy.obs_to_tensor(self._last_obs[0])[0]
+                    obs_tensor = thg.data.Batch.from_data_list([obs_tensor])
                     obs_tensor = obs_tensor.to(self.device)
                 else:
                     obs_tensor = obs_as_tensor(self._last_obs, self.device)
@@ -182,9 +184,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             # Clip the actions to avoid out of bound error
             if isinstance(self.action_space, gym.spaces.Box):
                 clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
+            #assert sum(self._last_obs[0].nodes[:,-1]) != 0
 
+            # Warning! I don't know why self._last_obs will be modified after line 190 (env.step(clipped_actions)), 
+            # so I just copy it to avoid being overwritten.
+            before = copy.deepcopy(self._last_obs[0])
             new_obs, rewards, dones, infos = env.step(clipped_actions)
-
+            self._last_obs[0] = before
+            #assert sum(self._last_obs[0].nodes[:,-1]) != 0, f"{self._last_obs[0]}"
             self.num_timesteps += env.num_envs
 
             # Give access to local variables
@@ -211,7 +218,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                     with th.no_grad():
                         terminal_value = self.policy.predict_values(terminal_obs)[0]
                     rewards[idx] += self.gamma * terminal_value
-
             rollout_buffer.add(self._last_obs, actions, rewards, self._last_episode_starts, values, log_probs)
             self._last_obs = new_obs
             self._last_episode_starts = dones
@@ -219,6 +225,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         with th.no_grad():
             if isinstance(new_obs[0], gym.spaces.GraphInstance):
                 obs_tensor = self.policy.obs_to_tensor(new_obs[0])[0]
+                obs_tensor = thg.data.Batch.from_data_list([obs_tensor])
                 obs_tensor = obs_tensor.to(self.device)
             else:
                 obs_tensor = obs_as_tensor(new_obs, self.device)

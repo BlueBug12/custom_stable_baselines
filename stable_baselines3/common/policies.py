@@ -336,6 +336,9 @@ class BasePolicy(BaseModel):
 
         observation, vectorized_env = self.obs_to_tensor(observation)
 
+        if isinstance(observation, thg.data.data.Data):
+            observation = thg.data.Batch.from_data_list([observation])
+
         with th.no_grad():
             actions = self._predict(observation, deterministic=deterministic)
         # Convert to numpy, and reshape to the original action shape
@@ -972,7 +975,7 @@ class GNNActorCriticPolicy(ActorCriticPolicy):
 
     def _predict(self, observation: thg.data.Data, 
                  deterministic: bool = False) -> th.Tensor:
-        observation.to("cuda")
+        observation.to(self.device)
         return self.get_distribution(observation).get_actions(deterministic=deterministic)
     
     def evaluate_actions(self, obs: thg.data.Data, 

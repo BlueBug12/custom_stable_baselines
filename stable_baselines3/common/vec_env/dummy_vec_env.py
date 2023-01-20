@@ -43,14 +43,12 @@ class DummyVecEnv(VecEnv):
 
     def step_wait(self) -> VecEnvStepReturn:
         for env_idx in range(self.num_envs):
-            obs, self.buf_rews[env_idx], self.buf_dones[env_idx], self.buf_infos[env_idx] = self.envs[env_idx].step(
-                self.actions[env_idx]
-            )
+            obs, self.buf_rews[env_idx], self.buf_dones[env_idx], self.buf_infos[env_idx] = self.envs[env_idx].step(self.actions[env_idx])
             if self.buf_dones[env_idx]:
                 # save final observation where user can get it, then reset
                 self.buf_infos[env_idx]["terminal_observation"] = obs
                 # additional info object from reset function
-                obs, _ = self.envs[env_idx].reset()
+                obs = self.envs[env_idx].reset()
             self._save_obs(env_idx, obs)
         return (self._obs_from_buf(), np.copy(self.buf_rews), np.copy(self.buf_dones), deepcopy(self.buf_infos))
 
@@ -59,13 +57,14 @@ class DummyVecEnv(VecEnv):
             seed = np.random.randint(0, 2**32 - 1)
         seeds = []
         for idx, env in enumerate(self.envs):
-            seeds.append(env.seed(seed + idx))
+            #seeds.append(env.seed(seed + idx))
+            seeds.append(seed + idx)
         return seeds
 
     def reset(self) -> VecEnvObs:
         for env_idx in range(self.num_envs):
             # additional info object will be generated in new gym version (0.26.0)
-            obs, _ = self.envs[env_idx].reset()
+            obs = self.envs[env_idx].reset()
             self._save_obs(env_idx, obs)
         return self._obs_from_buf()
 

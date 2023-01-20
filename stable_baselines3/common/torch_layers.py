@@ -7,7 +7,7 @@ from torch import nn
 import torch_geometric as thg
 from torch_geometric.nn import GCNConv, SAGEConv, GATConv, global_max_pool, BatchNorm
 import torch.nn.functional as F
-from torch_geometric_temporal.nn.recurrent.gconv_gru import GConvGRU
+#from torch_geometric_temporal.nn.recurrent.gconv_gru import GConvGRU
 
 from stable_baselines3.common.preprocessing import get_flattened_obs_dim, is_image_space
 from stable_baselines3.common.type_aliases import TensorDict
