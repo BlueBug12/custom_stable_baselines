@@ -9,7 +9,7 @@ import numpy as np
 
 from stable_baselines3.common.preprocessing import check_for_nested_spaces
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvObs
-
+import copy
 
 def copy_obs_dict(obs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     """
@@ -22,7 +22,7 @@ def copy_obs_dict(obs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     obs_dict_list = list()
     for k, v in obs.items():
         if isinstance(v[0], gym.spaces.GraphInstance):
-            obs_dict_list.append((k, v))
+            obs_dict_list.append((k, copy.deepcopy(v)))
         else:
             obs_dict_list.append((k, np.copy(v)))
     result_dict = OrderedDict(obs_dict_list)

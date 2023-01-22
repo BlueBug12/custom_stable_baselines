@@ -184,14 +184,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             # Clip the actions to avoid out of bound error
             if isinstance(self.action_space, gym.spaces.Box):
                 clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
-            #assert sum(self._last_obs[0].nodes[:,-1]) != 0
 
-            # Warning! I don't know why self._last_obs will be modified after line 190 (env.step(clipped_actions)), 
-            # so I just copy it to avoid being overwritten.
-            before = copy.deepcopy(self._last_obs[0])
             new_obs, rewards, dones, infos = env.step(clipped_actions)
-            self._last_obs[0] = before
-            #assert sum(self._last_obs[0].nodes[:,-1]) != 0, f"{self._last_obs[0]}"
             self.num_timesteps += env.num_envs
 
             # Give access to local variables
