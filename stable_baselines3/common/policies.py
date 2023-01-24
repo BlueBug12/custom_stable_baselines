@@ -965,7 +965,6 @@ class GNNActorCriticPolicy(ActorCriticPolicy):
     
     def forward(self, obs: thg.data.Data, 
                 deterministic: bool = False):
-        # torch_obs = self.obs_to_graph_tensor(obs)
         features = self.extract_features(obs)
         latent_pi, latent_vf = self.mlp_extractor(features)
         values = self.value_net(latent_vf)

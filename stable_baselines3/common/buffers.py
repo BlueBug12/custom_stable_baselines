@@ -826,7 +826,7 @@ class GraphRolloutBuffer(RolloutBuffer):
     def reset(self) -> None:
         assert isinstance(self.observation_space, spaces.Graph), "GraphRolloutBuffer must be used with Graph obs space only"
         
-        self.observations = list() # try to use list to save torch_geometric data
+        self.observations = [None] * self.buffer_size # try to use list to save torch_geometric data
         self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32)
         self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
@@ -858,7 +858,8 @@ class GraphRolloutBuffer(RolloutBuffer):
         # Same reshape, for actions
         action = action.reshape((self.n_envs, self.action_dim))
 
-        self.observations.append(obs.copy())
+        #self.observations[self.pos] = obs.copy()
+        self.observations[self.pos] = obs.copy()
         self.actions[self.pos] = np.array(action).copy()
         self.rewards[self.pos] = np.array(reward).copy()
         self.episode_starts[self.pos] = np.array(episode_start).copy()
