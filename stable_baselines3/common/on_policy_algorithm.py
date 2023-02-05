@@ -161,12 +161,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             self.policy.reset_noise(env.num_envs)
 
         callback.on_rollout_start()
-
+        policy_time = 0
+        predict_time = 0
+        step_time = 0
         while n_steps < n_rollout_steps:
             if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
                 # Sample a new noise matrix
                 self.policy.reset_noise(env.num_envs)
-
+            step_start = time.time_ns()
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
                 if isinstance(self._last_obs[0], gym.spaces.GraphInstance):
@@ -177,16 +179,17 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                     obs_tensor = obs_as_tensor(self._last_obs, self.device)
                 actions, values, log_probs = self.policy(obs_tensor)
             actions = actions.cpu().numpy()
-
+            policy_time += max((time.time_ns() - step_start) / 1e9, sys.float_info.epsilon)
             # Rescale and perform action
             clipped_actions = actions
             # Clip the actions to avoid out of bound error
             if isinstance(self.action_space, gym.spaces.Box):
                 clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
-
+            step_start = time.time_ns()
             new_obs, rewards, dones, infos = env.step(clipped_actions)
+            step_time += max((time.time_ns() - step_start) / 1e9, sys.float_info.epsilon)
+            
             self.num_timesteps += env.num_envs
-
             # Give access to local variables
             callback.update_locals(locals())
             if callback.on_step() is False:
@@ -214,7 +217,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             rollout_buffer.add(self._last_obs, actions, rewards, self._last_episode_starts, values, log_probs)
             self._last_obs = new_obs
             self._last_episode_starts = dones
-
+        start_time = time.time_ns()
         with th.no_grad():
             if isinstance(new_obs[0], gym.spaces.GraphInstance):
                 obs_tensor = self.policy.obs_to_tensor(new_obs[0])[0]
@@ -224,11 +227,14 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 obs_tensor = obs_as_tensor(new_obs, self.device)
             # Compute value for the last timestep
             values = self.policy.predict_values(obs_tensor)
-
+        predict_time = max((time.time_ns() - start_time) / 1e9, sys.float_info.epsilon)
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
 
         callback.on_rollout_end()
-
+        self.env_step_time  = step_time
+        self.policy_time = policy_time
+        self.predict_time = predict_time
+        #print(f"Env step time: {step_time} at step {self.num_timesteps}")
         return True
 
     def train(self) -> None:
@@ -257,11 +263,15 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         )
 
         callback.on_training_start(locals(), globals())
-
+        rollout_timer = 0
+        train_timer = 0
+        rollout_counter = 0
+        train_counter = 0
         while self.num_timesteps < total_timesteps:
-
+            rollout_start = time.time_ns()
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
-
+            rollout_timer += max((time.time_ns() - rollout_start) / 1e9, sys.float_info.epsilon)
+            rollout_counter += 1
             if continue_training is False:
                 break
 
@@ -279,9 +289,27 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.logger.record("time/fps", fps)
                 self.logger.record("time/time_elapsed", int(time_elapsed), exclude="tensorboard")
                 self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
+                if rollout_counter > 0:
+                    self.logger.record("time/rollout_time", rollout_timer / rollout_counter)
+                    rollout_timer = 0
+                    rollout_counter = 0
+                if train_counter > 0:
+                    self.logger.record("time/train_time", train_timer / train_counter)
+                    train_timer = 0
+                    train_counter = 0
+                self.logger.record("time/env_step_time", self.env_step_time)
+                self.logger.record("time/policy_time", self.policy_time)
+                self.logger.record("time/predict_time", self.predict_time)
+                self.logger.record("time/t1_time", self.t1_time)
+                self.logger.record("time/t2_time", self.t2_time)
+                self.logger.record("time/t3_time", self.t3_time)
+                self.logger.record("time/t4_time", self.t4_time)
                 self.logger.dump(step=self.num_timesteps)
-
+                
+            train_start = time.time_ns()
             self.train()
+            train_timer += max((time.time_ns() - train_start) / 1e9, sys.float_info.epsilon)
+            train_counter += 1
 
         callback.on_training_end()
 
