@@ -300,10 +300,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.logger.record("time/env_step_time", self.env_step_time)
                 self.logger.record("time/policy_time", self.policy_time)
                 self.logger.record("time/predict_time", self.predict_time)
-                self.logger.record("time/t1_time", self.t1_time)
-                self.logger.record("time/t2_time", self.t2_time)
-                self.logger.record("time/t3_time", self.t3_time)
-                self.logger.record("time/t4_time", self.t4_time)
                 self.logger.dump(step=self.num_timesteps)
                 
             train_start = time.time_ns()
