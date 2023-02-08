@@ -5,7 +5,8 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 import gym
 import numpy as np
-
+import time
+import sys
 from stable_baselines3.common import base_class  # pytype: disable=pyi-error
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, sync_envs_normalization
@@ -432,7 +433,7 @@ class EvalCallback(EventCallback):
 
             # Reset success rate buffer
             self._is_success_buffer = []
-
+            start_time = time.time_ns()
             episode_rewards, episode_lengths = evaluate_policy(
                 self.model,
                 self.eval_env,
@@ -443,7 +444,8 @@ class EvalCallback(EventCallback):
                 warn=self.warn,
                 callback=self._log_success_callback,
             )
-
+            self.logger.record("eval_time/eval_policy", max((time.time_ns() - start_time) / 1e9, sys.float_info.epsilon))
+            start_time = time.time_ns()
             if self.log_path is not None:
                 self.evaluations_timesteps.append(self.num_timesteps)
                 self.evaluations_results.append(episode_rewards)
@@ -462,6 +464,7 @@ class EvalCallback(EventCallback):
                     ep_lengths=self.evaluations_length,
                     **kwargs,
                 )
+            self.logger.record("eval_time/eval_2", max((time.time_ns() - start_time) / 1e9, sys.float_info.epsilon))
 
             mean_reward, std_reward = np.mean(episode_rewards), np.std(episode_rewards)
             mean_ep_length, std_ep_length = np.mean(episode_lengths), np.std(episode_lengths)
@@ -487,8 +490,10 @@ class EvalCallback(EventCallback):
             if mean_reward > self.best_mean_reward:
                 if self.verbose > 0:
                     print("New best mean reward!")
+                start_time = time.time_ns()
                 if self.best_model_save_path is not None:
                     self.model.save(os.path.join(self.best_model_save_path, "best_model"))
+                self.logger.record("eval_time/save_model", max((time.time_ns() - start_time) / 1e9, sys.float_info.epsilon))
                 self.best_mean_reward = mean_reward
                 # Trigger callback on new best model, if needed
                 if self.callback_on_new_best is not None:
