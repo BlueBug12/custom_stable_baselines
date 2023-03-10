@@ -954,14 +954,16 @@ class GNNActorCriticPolicy(ActorCriticPolicy):
                 x = th.tensor(obs.nodes).float()
                 #edge_index = th.tensor(obs.edge_links, dtype=th.long).t().contiguous().view(2, -1)
                 edge_index = th.tensor(obs.edge_links, dtype=th.long)
-                torch_obs.append(thg.data.Data(x=x, edge_index=edge_index))
+                edge_attr = th.tensor(obs.edges, dtype=th.float)
+                torch_obs.append(thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, edge_num=len(edge_attr)))
             if len(torch_obs) == 1:
                 torch_obs = torch_obs[0]
         else:
             x = th.tensor(observation.nodes).float()
             #edge_index = th.tensor(observation.edge_links, dtype=th.long).t().contiguous().view(2, -1)
             edge_index = th.tensor(observation.edge_links, dtype=th.long)
-            torch_obs = thg.data.Data(x=x, edge_index=edge_index)
+            edge_attr = th.tensor(observation.edges, dtype=th.float)
+            torch_obs = thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, edge_num=len(edge_attr))
         return torch_obs, vectorized_env
     
     def forward(self, obs: thg.data.Data, 
