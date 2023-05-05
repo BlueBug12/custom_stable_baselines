@@ -12,6 +12,7 @@ import numpy as np
 import torch as th
 import torch_geometric as thg
 from torch import nn
+from torch_geometric.utils import to_undirected
 
 from stable_baselines3.common.distributions import (
     BernoulliDistribution,
@@ -966,10 +967,27 @@ class GNNActorCriticPolicy(ActorCriticPolicy):
             torch_obs = thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, edge_num=len(edge_attr))
         return torch_obs, vectorized_env
     
+    def extract_features(self, x, edge_index, edge_attr, batch) -> th.Tensor:
+        """
+        Preprocess the observation if needed and extract features.
+
+        :param obs:
+        :return:
+        """
+        assert self.features_extractor is not None, "No features extractor was set"
+        return self.features_extractor(x, edge_index, edge_attr, batch) 
+
     def forward(self, obs: thg.data.Data, 
                 deterministic: bool = False):
-        features = self.extract_features(obs)
-        latent_pi, latent_vf = self.mlp_extractor(features)
+        x = obs.x
+        ori_edge_index = obs.edge_index
+        ori_edge_attr = obs.edge_attr
+        edge_index, edge_attr = to_undirected(edge_index = ori_edge_index, edge_attr = ori_edge_attr)
+        edge_num = obs.edge_num
+        batch = obs.batch
+        
+        feature = self.extract_features(x, edge_index, edge_attr, batch)
+        latent_pi, latent_vf = self.mlp_extractor(feature, edge_index, edge_attr, ori_edge_index, ori_edge_attr, edge_num, batch)
         values = self.value_net(latent_vf)
         distribution = self._get_action_dist_from_latent(latent_pi)
         actions = distribution.get_actions(deterministic=deterministic)
@@ -984,19 +1002,39 @@ class GNNActorCriticPolicy(ActorCriticPolicy):
     
     def evaluate_actions(self, obs: thg.data.Data, 
                          actions: th.Tensor):
-        features = self.extract_features(obs)
-        latent_pi, latent_vf = self.mlp_extractor(features)
+        x = obs.x
+        ori_edge_index = obs.edge_index
+        ori_edge_attr = obs.edge_attr
+        edge_index, edge_attr = to_undirected(edge_index = ori_edge_index, edge_attr = ori_edge_attr)
+        edge_num = obs.edge_num
+        batch = obs.batch
+
+        feature = self.extract_features(x, edge_index, edge_attr, batch)
+        latent_pi, latent_vf = self.mlp_extractor(feature, edge_index, edge_attr, ori_edge_index, ori_edge_attr, edge_num, batch)
         distribution = self._get_action_dist_from_latent(latent_pi)
         log_prob = distribution.log_prob(actions)
         values = self.value_net(latent_vf)
         return values, log_prob, distribution.entropy()
     
     def get_distribution(self, obs: thg.data.Data):
-        features = self.extract_features(obs)
-        latent_pi = self.mlp_extractor.forward_actor(features)
+        x = obs.x
+        ori_edge_index = obs.edge_index
+        ori_edge_attr = obs.edge_attr
+        edge_index, edge_attr = to_undirected(edge_index = ori_edge_index, edge_attr = ori_edge_attr)
+        edge_num = obs.edge_num
+        batch = obs.batch
+
+        feature = self.extract_features(x, edge_index, edge_attr, batch)
+        latent_pi = self.mlp_extractor.forward_actor(feature, edge_index, edge_attr, ori_edge_index, ori_edge_attr, edge_num, batch)
         return self._get_action_dist_from_latent(latent_pi)
     
     def predict_values(self, obs: thg.data.Data):
-        features = self.extract_features(obs)
-        latent_vf = self.mlp_extractor.forward_critic(features)
+        x = obs.x
+        ori_edge_index = obs.edge_index
+        ori_edge_attr = obs.edge_attr
+        edge_index, edge_attr = to_undirected(edge_index = ori_edge_index, edge_attr = ori_edge_attr)
+        batch = obs.batch
+
+        feature = self.extract_features(x, edge_index, edge_attr, batch)
+        latent_vf = self.mlp_extractor.forward_critic(feature, edge_index, edge_attr, batch)
         return self.value_net(latent_vf)
