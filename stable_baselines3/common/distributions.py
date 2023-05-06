@@ -352,6 +352,63 @@ class MultiCategoricalDistribution(Distribution):
         log_prob = self.log_prob(actions)
         return actions, log_prob
 
+class DynamicCategoricalDistribution(Distribution):
+    """
+    Customized distribution for dynamic action space
+
+    :param action_dims: List of sizes of discrete action spaces
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.action_dims = None
+
+    def proba_distribution_net(self, latent_dim: int) -> nn.Module:
+        """
+        Create the layer that represents the distribution:
+        it will be the logits (flattened) of the MultiCategorical distribution.
+        You can then get probabilities using a softmax on each sub-space.
+
+        :param latent_dim: Dimension of the last layer
+            of the policy network (before the action layer)
+        :return:
+        """
+        raise NotImplementedError
+        #action_logits = nn.Linear(latent_dim, sum(self.action_dims))
+        #return action_logits
+
+    def proba_distribution(self, action_logits: List[th.Tensor]) -> "DynamicCategoricalDistribution":
+        #print(type(action_logits))
+        #print(type(action_logits[0]))
+        if (not (isinstance(action_logits, list) or isinstance(action_logits, tuple))) or (not len(action_logits) >= 1) or (not isinstance(action_logits[0], th.Tensor)):
+            raise ValueError(f"Parameter action_logits must be the List[th.Tensor] type")
+        self.distribution = [Categorical(logits=split) for split in action_logits]
+        return self
+
+    def log_prob(self, actions: th.Tensor) -> th.Tensor:
+        # Extract each discrete action and compute log prob for their respective distributions
+        return th.stack([dist.log_prob(action) for dist, action in zip(self.distribution, actions)])
+
+    def entropy(self) -> th.Tensor:
+        return th.stack([dist.entropy() for dist in self.distribution])
+
+    def sample(self) -> th.Tensor:
+        return th.stack([dist.sample() for dist in self.distribution])
+
+    def mode(self) -> th.Tensor:
+        return th.stack([th.argmax(dist.probs, dim=1) for dist in self.distribution])
+
+    def actions_from_params(self, action_logits: th.Tensor, deterministic: bool = False) -> th.Tensor:
+        raise NotImplementedError
+        # Update the proba distribution
+        #self.proba_distribution(action_logits)
+        #return self.get_actions(deterministic=deterministic)
+
+    def log_prob_from_params(self, action_logits: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+        raise NotImplementedError
+        #actions = self.actions_from_params(action_logits)
+        #log_prob = self.log_prob(actions)
+        #return actions, log_prob
 
 class BernoulliDistribution(Distribution):
     """
@@ -661,7 +718,8 @@ def make_proba_distribution(
         cls = StateDependentNoiseDistribution if use_sde else DiagGaussianDistribution
         return cls(get_action_dim(action_space), **dist_kwargs)
     elif isinstance(action_space, spaces.Discrete):
-        return CategoricalDistribution(action_space.n, **dist_kwargs)
+        #return CategoricalDistribution(action_space.n, **dist_kwargs)
+        return DynamicCategoricalDistribution(**dist_kwargs)
     elif isinstance(action_space, spaces.MultiDiscrete):
         return MultiCategoricalDistribution(action_space.nvec, **dist_kwargs)
     elif isinstance(action_space, spaces.MultiBinary):

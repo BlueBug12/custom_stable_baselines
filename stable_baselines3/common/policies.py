@@ -17,6 +17,7 @@ from torch_geometric.utils import to_undirected
 from stable_baselines3.common.distributions import (
     BernoulliDistribution,
     CategoricalDistribution,
+    DynamicCategoricalDistribution,
     DiagGaussianDistribution,
     Distribution,
     MultiCategoricalDistribution,
@@ -560,6 +561,8 @@ class ActorCriticPolicy(BasePolicy):
             )
         elif isinstance(self.action_dist, (CategoricalDistribution, MultiCategoricalDistribution, BernoulliDistribution)):
             self.action_net = self.action_dist.proba_distribution_net(latent_dim=latent_dim_pi)
+        elif isinstance(self.action_dist, DynamicCategoricalDistribution):
+            self.action_net = None
         else:
             raise NotImplementedError(f"Unsupported distribution '{self.action_dist}'.")
 
@@ -574,7 +577,7 @@ class ActorCriticPolicy(BasePolicy):
             module_gains = {
                 self.features_extractor: np.sqrt(2),
                 self.mlp_extractor: np.sqrt(2),
-                self.action_net: 0.01,
+                #self.action_net: 0.01,
                 self.value_net: 1,
             }
             for module, gain in module_gains.items():
