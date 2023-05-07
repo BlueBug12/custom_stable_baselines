@@ -718,8 +718,8 @@ def make_proba_distribution(
         cls = StateDependentNoiseDistribution if use_sde else DiagGaussianDistribution
         return cls(get_action_dim(action_space), **dist_kwargs)
     elif isinstance(action_space, spaces.Discrete):
-        #return CategoricalDistribution(action_space.n, **dist_kwargs)
-        return DynamicCategoricalDistribution(**dist_kwargs)
+        return CategoricalDistribution(action_space.n, **dist_kwargs)
+        #return DynamicCategoricalDistribution(**dist_kwargs)
     elif isinstance(action_space, spaces.MultiDiscrete):
         return MultiCategoricalDistribution(action_space.nvec, **dist_kwargs)
     elif isinstance(action_space, spaces.MultiBinary):

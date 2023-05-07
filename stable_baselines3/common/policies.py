@@ -959,7 +959,8 @@ class GNNActorCriticPolicy(ActorCriticPolicy):
                 #edge_index = th.tensor(obs.edge_links, dtype=th.long).t().contiguous().view(2, -1)
                 edge_index = th.tensor(obs.edge_links, dtype=th.long)
                 edge_attr = th.tensor(obs.edges, dtype=th.float)
-                torch_obs.append(thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, edge_num=len(edge_attr)))
+                edge_num = th.count_nonzero(edge_attr[:,-1]==1)
+                torch_obs.append(thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, edge_num=edge_num))
             if len(torch_obs) == 1:
                 torch_obs = torch_obs[0]
         else:
@@ -967,7 +968,8 @@ class GNNActorCriticPolicy(ActorCriticPolicy):
             #edge_index = th.tensor(observation.edge_links, dtype=th.long).t().contiguous().view(2, -1)
             edge_index = th.tensor(observation.edge_links, dtype=th.long)
             edge_attr = th.tensor(observation.edges, dtype=th.float)
-            torch_obs = thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, edge_num=len(edge_attr))
+            edge_num = th.count_nonzero(edge_attr[:,-1]==1)
+            torch_obs = thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, edge_num=edge_num)
         return torch_obs, vectorized_env
     
     def extract_features(self, x, edge_index, edge_attr, batch) -> th.Tensor:

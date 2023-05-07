@@ -139,7 +139,8 @@ class BaseBuffer(ABC):
                 #edge_index = th.tensor(graph_obj.edge_links, dtype=th.long).t().contiguous().view(2, -1)
                 edge_index = th.tensor(graph_obj.edge_links, dtype=th.long)
                 edge_attr = th.tensor(graph_obj.edges, dtype=th.float)
-                torch_obs = thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, edge_num=len(edge_attr))
+                edge_num = th.count_nonzero(edge_attr[:,-1]==1)
+                torch_obs = thg.data.Data(x=x, edge_index=edge_index, edge_attr=edge_attr, edge_num=edge_num)
                 obs_array.append(torch_obs.to(self.device))
             return thg.data.Batch.from_data_list(obs_array)
         if copy: 
