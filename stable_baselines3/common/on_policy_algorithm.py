@@ -164,7 +164,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         policy_time = 0
         predict_time = 0
         step_time = 0
-        self.policy = self.policy.to(th.device("cpu"))
+        # self.policy = self.policy.to(th.device("cpu"))
         while n_steps < n_rollout_steps:
             if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
                 # Sample a new noise matrix
@@ -175,8 +175,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 if isinstance(self._last_obs[0], gym.spaces.GraphInstance):
                     obs_tensor = self.policy.obs_to_tensor(self._last_obs[0])[0]
                     obs_tensor = thg.data.Batch.from_data_list([obs_tensor])
-                    #obs_tensor = obs_tensor.to(self.device)
-                    obs_tensor = obs_tensor.to(th.device("cpu"))
+                    obs_tensor = obs_tensor.to(self.device)
+                    # obs_tensor = obs_tensor.to(th.device("cpu"))
                 else:
                     obs_tensor = obs_as_tensor(self._last_obs, self.device)
                 actions, values, log_probs = self.policy(obs_tensor)
@@ -226,8 +226,8 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.vertex_num = obs_tensor.x.shape[0]
                 self.edge_num = obs_tensor.edge_index.shape[1]
                 obs_tensor = thg.data.Batch.from_data_list([obs_tensor])
-                #obs_tensor = obs_tensor.to(self.device)
-                obs_tensor = obs_tensor.to(th.device("cpu"))
+                obs_tensor = obs_tensor.to(self.device)
+                # obs_tensor = obs_tensor.to(th.device("cpu"))
             else:
                 obs_tensor = obs_as_tensor(new_obs, self.device)
             # Compute value for the last timestep
@@ -312,7 +312,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 self.logger.dump(step=self.num_timesteps)
                 
             train_start = time.time_ns()
-            self.policy = self.policy.to(self.device)
+            # self.policy = self.policy.to(self.device)
             self.train()
             train_timer += max((time.time_ns() - train_start) / 1e9, sys.float_info.epsilon)
             train_counter += 1
